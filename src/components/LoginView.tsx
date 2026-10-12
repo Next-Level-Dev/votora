@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { User, Language, Theme } from '../types';
+import { Language, Theme } from '../types';
 import { translations } from '../utils/i18n';
 import { KeyRound, ArrowRight, Sun, Moon } from 'lucide-react';
 
 interface LoginViewProps {
   onLogin: (code: string, rememberMe: boolean) => boolean;
-  users: User[];
   language: Language;
   onToggleLanguage: () => void;
   theme: Theme;
@@ -14,7 +13,6 @@ interface LoginViewProps {
 
 export const LoginView: React.FC<LoginViewProps> = ({
   onLogin,
-  users,
   language,
   onToggleLanguage,
   theme,
@@ -46,12 +44,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
     } else {
       setError(false);
     }
-  };
-
-  const handleQuickLogin = (demoCode: string) => {
-    setCode(demoCode);
-    setError(false);
-    onLogin(demoCode, true);
   };
 
   return (
@@ -131,30 +123,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
             {t.enterCodeBtn} →
           </button>
         </form>
-
-        {/* Quick Logins (derived from users list so codes stay in sync) */}
-        {users.length > 0 && (
-          <div className="mt-5 pt-4 border-t border-neutral-200 dark:border-neutral-800">
-            <span className="block text-[11px] text-neutral-500 dark:text-neutral-400 mb-2 font-medium">
-              {t.demoAccounts}:
-            </span>
-            <div className="grid grid-cols-2 gap-1.5">
-              {users.map((u) => (
-                <button
-                  key={u.id}
-                  type="button"
-                  onClick={() => handleQuickLogin(u.code)}
-                  className="px-2 py-1.5 text-xs text-left rounded border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800 cursor-pointer font-mono"
-                >
-                  <div className="font-semibold text-neutral-800 dark:text-neutral-200 truncate">
-                    {u.role === 'admin' ? `★ ${u.name}` : u.name}
-                  </div>
-                  <div className="text-[10px] text-neutral-500">{u.code}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       <div className="text-center text-[11px] text-neutral-400 py-2">

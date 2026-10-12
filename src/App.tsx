@@ -386,7 +386,6 @@ export default function App() {
       {!currentUser ? (
         <LoginView
           onLogin={handleLogin}
-          users={appState.users}
           language={language}
           onToggleLanguage={toggleLanguage}
           theme={theme}
