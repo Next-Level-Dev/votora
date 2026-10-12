@@ -56,6 +56,53 @@ export default function App() {
     saveAppState(sortedState);
   };
 
+  // Login handler (validated server-side so invite codes never need to be
+  // shipped to the client for other users)
+  const handleLogin = async (code: string, rememberMe: boolean): Promise<boolean> => {
+    const cleanCode = code.trim().toUpperCase();
+    let user: User | null = null;
+
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: cleanCode }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        user = data.user;
+        if (data.state) {
+          updateState(data.state);
+        }
+      } else if (res.status === 401) {
+        return false;
+      }
+    } catch {
+      // Offline fallback: validate against locally cached data
+      const found = appState.users.find((u) => u.code.toUpperCase() === cleanCode);
+      if (!found) return false;
+      user = { ...found, lastLoginAt: new Date().toISOString() };
+    }
+
+    if (!user) return false;
+
+    if (rememberMe) {
+      setLoginCookie(user.code || cleanCode);
+    } else {
+      removeLoginCookie();
+    }
+
+    setCurrentUser(user);
+    setActiveView('polls');
+
+    if (window.location.search.includes('code=')) {
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, '', cleanUrl);
+    }
+
+    return true;
+  };
+
   // 1. Fetch remote SQLite data on mount, with dual fallback
   useEffect(() => {
     fetch('/api/state')
@@ -72,13 +119,7 @@ export default function App() {
           const targetCode = queryCode || getLoginCookie();
 
           if (targetCode) {
-            const found = data.users.find(
-              (u) => u.code.toUpperCase() === targetCode.trim().toUpperCase()
-            );
-            if (found) {
-              setCurrentUser(found);
-              setActiveView('polls');
-            }
+            handleLogin(targetCode.trim().toUpperCase(), true);
           }
         }
       })
@@ -98,42 +139,6 @@ export default function App() {
         }
       });
   }, []);
-
-  // Login handler
-  const handleLogin = (code: string, rememberMe: boolean): boolean => {
-    const cleanCode = code.trim().toUpperCase();
-    const user = appState.users.find((u) => u.code.toUpperCase() === cleanCode);
-
-    if (!user) {
-      return false;
-    }
-
-    fetch('/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: cleanCode }),
-    }).catch(() => {});
-
-    const updatedUser = { ...user, lastLoginAt: new Date().toISOString() };
-    const updatedUsers = appState.users.map((u) => (u.id === user.id ? updatedUser : u));
-    updateState({ ...appState, users: updatedUsers });
-
-    if (rememberMe) {
-      setLoginCookie(user.code);
-    } else {
-      removeLoginCookie();
-    }
-
-    setCurrentUser(updatedUser);
-    setActiveView('polls');
-
-    if (window.location.search.includes('code=')) {
-      const cleanUrl = window.location.pathname;
-      window.history.replaceState({}, '', cleanUrl);
-    }
-
-    return true;
-  };
 
   // Logout handler
   const handleLogout = () => {

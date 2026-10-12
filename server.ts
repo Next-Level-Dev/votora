@@ -26,6 +26,31 @@ const isProd = process.env.NODE_ENV === 'production';
 app.use(express.json());
 app.use(cookieParser());
 
+// Determine whether the requester (via login cookie) is an admin.
+async function viewerIsAdmin(req: express.Request): Promise<boolean> {
+  try {
+    const cookies = (req as any).cookies as Record<string, string> | undefined;
+    const code = cookies && cookies.votora_auth_code;
+    if (!code) return false;
+    const data = await getAllData();
+    const user = data.users.find((u) => u.code.toUpperCase() === String(code).toUpperCase());
+    return Boolean(user && user.role === 'admin');
+  } catch {
+    return false;
+  }
+}
+
+// Strip confidential invite codes from data being sent to non-admin viewers.
+function sanitizeForViewer(data: Awaited<ReturnType<typeof getAllData>>, isAdmin: boolean) {
+  if (isAdmin) return data;
+  return {
+    ...data,
+    users: data.users.map((u) => ({ ...u, code: '' })),
+    votes: data.votes.map((v) => ({ ...v, userCode: '' })),
+    polls: data.polls.map((p) => ({ ...p, createdBy: '' })),
+  };
+}
+
 // Server configuration & environment flags
 app.get('/api/config', (req, res) => {
   res.json({
@@ -38,7 +63,8 @@ app.get('/api/config', (req, res) => {
 app.get('/api/state', async (req, res) => {
   try {
     const data = await getAllData();
-    res.json(data);
+    const isAdmin = await viewerIsAdmin(req);
+    res.json(sanitizeForViewer(data, isAdmin));
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -65,7 +91,7 @@ app.post('/api/login', async (req, res) => {
     });
 
     const updated = { ...user, lastLoginAt: new Date().toISOString() };
-    res.json({ user: updated, state: data });
+    res.json({ user: updated, state: sanitizeForViewer(data, user.role === 'admin') });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -146,7 +172,8 @@ app.post('/api/votes', async (req, res) => {
     }
 
     const nextState = await getAllData();
-    res.json({ success: true, nextState });
+    const isAdmin = await viewerIsAdmin(req);
+    res.json({ success: true, nextState: sanitizeForViewer(nextState, isAdmin) });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

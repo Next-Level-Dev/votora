@@ -507,7 +507,8 @@ const AttendeesModal: React.FC<AttendeesModalProps> = ({
                     .filter((u) => !slot.attendeeIds.includes(u.id))
                     .map((u) => (
                       <option key={u.id} value={u.id}>
-                        {u.name} ({u.code})
+                        {u.name}
+                        {u.code ? ` (${u.code})` : ''}
                       </option>
                     ))}
                 </select>
@@ -758,7 +759,8 @@ const EditSlotModal: React.FC<EditSlotModalProps> = ({
                   .filter((u) => !attendeeIds.includes(u.id))
                   .map((u) => (
                     <option key={u.id} value={u.id}>
-                      {u.name} ({u.code})
+                      {u.name}
+                      {u.code ? ` (${u.code})` : ''}
                     </option>
                   ))}
               </select>

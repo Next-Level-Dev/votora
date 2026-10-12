@@ -35,12 +35,31 @@ export const UsersManagementView: React.FC<UsersManagementViewProps> = ({
   const [userSearch, setUserSearch] = useState('');
   const [newGroupName, setNewGroupName] = useState('');
   const [editingUserGroupsId, setEditingUserGroupsId] = useState<string | null>(null);
+  const [groupFeedback, setGroupFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const handleCreateGroup = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newGroupName.trim()) return;
-    onAddGroup(newGroupName.trim());
+    const name = newGroupName.trim();
+    if (!name) {
+      setGroupFeedback({
+        type: 'error',
+        text: language === 'tr' ? 'Lütfen bir grup adı girin.' : 'Please enter a group name.',
+      });
+      return;
+    }
+    if (groups.some((g) => g.toLowerCase() === name.toLowerCase())) {
+      setGroupFeedback({
+        type: 'error',
+        text: language === 'tr' ? 'Bu isimde bir grup zaten var.' : 'A group with this name already exists.',
+      });
+      return;
+    }
+    onAddGroup(name);
     setNewGroupName('');
+    setGroupFeedback({
+      type: 'success',
+      text: language === 'tr' ? `"${name}" grubu eklendi.` : `Group "${name}" added.`,
+    });
   };
 
   const filteredUsers = users.filter(
@@ -193,20 +212,41 @@ export const UsersManagementView: React.FC<UsersManagementViewProps> = ({
           <input
             type="text"
             value={newGroupName}
-            onChange={(e) => setNewGroupName(e.target.value)}
+            onChange={(e) => {
+              setNewGroupName(e.target.value);
+              if (groupFeedback) setGroupFeedback(null);
+            }}
             placeholder={t.newGroupNamePlaceholder}
             className="flex-1 px-3 py-1.5 text-xs rounded border border-neutral-300 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100"
           />
           <button
             type="submit"
+            title={t.addGroupBtn}
             className="px-3.5 py-1.5 text-xs rounded bg-neutral-900 dark:bg-neutral-100 hover:bg-neutral-800 dark:hover:bg-neutral-200 text-white dark:text-neutral-900 cursor-pointer font-medium"
           >
             {t.addGroupBtn}
           </button>
         </form>
 
+        {groupFeedback && (
+          <div
+            className={`px-3 py-1.5 text-xs rounded border ${
+              groupFeedback.type === 'success'
+                ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900 text-emerald-700 dark:text-emerald-300'
+                : 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-900 text-red-600 dark:text-red-400'
+            }`}
+          >
+            {groupFeedback.text}
+          </div>
+        )}
+
         {/* Groups Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {groups.length === 0 && (
+            <div className="col-span-full text-center py-6 text-neutral-400 text-xs border border-dashed border-neutral-300 dark:border-neutral-800 rounded-lg">
+              {language === 'tr' ? 'Henüz grup yok.' : 'No groups yet.'}
+            </div>
+          )}
           {groups.map((grp) => {
             const members = users.filter((u) => u.groups.includes(grp));
             return (

@@ -4,7 +4,7 @@ import { translations } from '../utils/i18n';
 import { KeyRound, ArrowRight, Sun, Moon } from 'lucide-react';
 
 interface LoginViewProps {
-  onLogin: (code: string, rememberMe: boolean) => boolean;
+  onLogin: (code: string, rememberMe: boolean) => Promise<boolean>;
   language: Language;
   onToggleLanguage: () => void;
   theme: Theme;
@@ -35,15 +35,11 @@ export const LoginView: React.FC<LoginViewProps> = ({
     }
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!code.trim()) return;
-    const success = onLogin(code.trim().toUpperCase(), rememberMe);
-    if (!success) {
-      setError(true);
-    } else {
-      setError(false);
-    }
+    const success = await onLogin(code.trim().toUpperCase(), rememberMe);
+    setError(!success);
   };
 
   return (

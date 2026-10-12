@@ -77,7 +77,6 @@ export const VoterView: React.FC<VoterViewProps> = ({
       <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 sm:p-3 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-800 rounded-lg text-xs">
         <div className="flex items-center gap-2">
           <span className="font-bold text-neutral-900 dark:text-neutral-100">{currentUser.name}</span>
-          <span className="text-neutral-400 font-mono">({currentUser.code})</span>
           {currentUser.role === 'admin' && (
             <span className="text-[10px] text-neutral-500 font-mono">★ admin</span>
           )}
