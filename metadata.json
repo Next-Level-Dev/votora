@@ -1,0 +1,6 @@
+{
+  "name": "Votora - Group Poll & Watch Party Decision Hub",
+  "description": "Exclusive invite-code poll platform with ranked-choice voting, dynamic group routing, write-in suggestions, and live admin analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
