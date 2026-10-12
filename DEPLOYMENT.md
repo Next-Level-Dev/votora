@@ -48,3 +48,19 @@ To backup:
 ```bash
 cp ./data/votora.sqlite /path/to/backup/votora_$(date +%F).sqlite
 ```
+
+## UPDATE
+
+pm2 stop votora
+
+git status
+git branch --show-current
+git remote -v
+git pull origin main
+
+npm install
+npm run build
+
+pm2 restart votora --update-env
+pm2 save
+pm2 logs votora --lines 50
