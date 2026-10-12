@@ -11,10 +11,6 @@ export const translations = {
     rememberMe: 'Remember me',
     invalidCode: 'Invalid code. Check with host.',
     demoAccounts: 'Demo Logins',
-    demoAdmin: 'Admin',
-    demoFriendCan: 'Can (Friends)',
-    demoFriendMert: 'Mert (2D)',
-    demoFriendZeynep: 'Zeynep (Live Action)',
 
     // Nav
     adminRole: 'Admin',
@@ -194,10 +190,6 @@ export const translations = {
     rememberMe: 'Beni hatırla',
     invalidCode: 'Geçersiz kod.',
     demoAccounts: 'Hızlı Giriş',
-    demoAdmin: 'Yönetici',
-    demoFriendCan: 'Can (Arkadaşlar)',
-    demoFriendMert: 'Mert (2D)',
-    demoFriendZeynep: 'Zeynep (Live Action)',
 
     // Nav
     adminRole: 'Yönetici',

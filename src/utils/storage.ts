@@ -409,15 +409,3 @@ export function saveAppState(state: AppState): void {
     // Error handling
   }
 }
-
-export function resetAppStateToDefaults(): AppState {
-  const defaultState: AppState = {
-    users: INITIAL_USERS,
-    polls: INITIAL_POLLS,
-    votes: INITIAL_VOTES,
-    groups: INITIAL_GROUPS,
-    schedules: sortScheduleSlots(INITIAL_SCHEDULES),
-  };
-  saveAppState(defaultState);
-  return defaultState;
-}

@@ -16,7 +16,6 @@ import {
   deleteGroup,
   insertScheduleSlot,
   deleteScheduleSlot,
-  resetDb,
 } from './server/db';
 import { ScheduleSlot } from './src/types';
 
@@ -29,13 +28,8 @@ app.use(cookieParser());
 
 // Server configuration & environment flags
 app.get('/api/config', (req, res) => {
-  const showDemoAccounts = process.env.SHOW_DEMO_ACCOUNTS !== undefined
-    ? process.env.SHOW_DEMO_ACCOUNTS === 'true'
-    : !isProd; // false in production, true in development
-
   res.json({
     isProd,
-    showDemoAccounts,
     hasEnvAdminCode: Boolean(process.env.ADMIN_CODE),
   });
 });
@@ -279,15 +273,6 @@ app.put('/api/schedules/:id/attendees', async (req, res) => {
     await insertScheduleSlot(updatedSlot);
     const nextState = await getAllData();
     res.json({ success: true, schedules: nextState.schedules });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post('/api/reset', async (req, res) => {
-  try {
-    const fresh = await resetDb();
-    res.json({ success: true, state: fresh });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

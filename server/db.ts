@@ -462,15 +462,3 @@ export async function deleteScheduleSlot(slotId: string) {
   database.run("DELETE FROM schedules WHERE id = ?;", [slotId]);
   persistDb();
 }
-
-export async function resetDb() {
-  const database = await getDb();
-  database.run("DELETE FROM users;");
-  database.run("DELETE FROM polls;");
-  database.run("DELETE FROM votes;");
-  database.run("DELETE FROM app_groups;");
-  database.run("DELETE FROM schedules;");
-  seedDatabase(database);
-  persistDb();
-  return getAllData();
-}

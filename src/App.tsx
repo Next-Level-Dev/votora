@@ -1,11 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, Poll, VoteRecord, Language, Theme, PollOption, ScheduleSlot } from './types';
-import {
-  loadAppState,
-  saveAppState,
-  resetAppStateToDefaults,
-  AppState,
-} from './utils/storage';
+import { loadAppState, saveAppState, AppState } from './utils/storage';
 import { setLoginCookie, getLoginCookie, removeLoginCookie } from './utils/cookie';
 import { Navbar } from './components/Navbar';
 import { LoginView } from './components/LoginView';
@@ -386,20 +381,6 @@ export default function App() {
     }).catch(() => {});
   };
 
-  const handleResetData = () => {
-    fetch('/api/reset', { method: 'POST' })
-      .then((res) => res.json())
-      .then((res) => {
-        if (res.state) {
-          updateState(res.state);
-        }
-      })
-      .catch(() => {
-        const fresh = resetAppStateToDefaults();
-        setAppState(fresh);
-      });
-  };
-
   return (
     <div className="min-h-screen flex flex-col bg-neutral-100 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 transition-colors">
       {!currentUser ? (
@@ -479,16 +460,7 @@ export default function App() {
           )}
 
           <footer className="border-t border-neutral-200 dark:border-neutral-800 py-3 text-center text-[11px] text-neutral-400 font-mono">
-            <div className="max-w-4xl mx-auto px-4 flex items-center justify-between">
-              <span>VOTORA</span>
-              <button
-                type="button"
-                onClick={handleResetData}
-                className="hover:underline cursor-pointer"
-              >
-                [{language === 'tr' ? 'Sıfırla' : 'Reset'}]
-              </button>
-            </div>
+            <span>VOTORA</span>
           </footer>
         </>
       )}
