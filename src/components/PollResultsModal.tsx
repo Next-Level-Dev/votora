@@ -54,7 +54,7 @@ export const PollResultsModal: React.FC<PollResultsModalProps> = ({
               className="p-2.5 rounded border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 text-xs"
             >
               <div className="flex items-center justify-between mb-1.5 gap-2">
-                <div className="font-semibold text-neutral-900 dark:text-neutral-100 truncate">
+                <div className="font-semibold text-neutral-900 dark:text-neutral-100 break-words whitespace-normal">
                   <span className="font-mono text-neutral-400 mr-1.5">{idx + 1}.</span>
                   <span>{opt.text}</span>
                   {opt.isWriteIn && (
@@ -109,8 +109,8 @@ export const PollResultsModal: React.FC<PollResultsModalProps> = ({
                       key={v.id}
                       className="p-1.5 bg-neutral-100 dark:bg-neutral-800/50 rounded flex justify-between gap-2 text-[11px]"
                     >
-                      <span className="font-semibold text-neutral-800 dark:text-neutral-200">{v.userName}</span>
-                      <span className="text-neutral-600 dark:text-neutral-400 truncate max-w-[200px]">{text}</span>
+                      <span className="font-semibold text-neutral-800 dark:text-neutral-200 shrink-0">{v.userName}</span>
+                      <span className="text-neutral-600 dark:text-neutral-400 overflow-x-auto whitespace-nowrap">{text}</span>
                     </div>
                   );
                 })}

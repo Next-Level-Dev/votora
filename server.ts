@@ -18,6 +18,12 @@ import {
   deleteScheduleSlot,
 } from './server/db';
 import { ScheduleSlot } from './src/types';
+import { ADMIN_GROUP } from './src/utils/votingEngine';
+
+function isAdminUser(user: { role?: string; groups?: string[] } | undefined | null): boolean {
+  if (!user) return false;
+  return user.role === 'admin' || Boolean(user.groups && user.groups.includes(ADMIN_GROUP));
+}
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
@@ -34,7 +40,7 @@ async function viewerIsAdmin(req: express.Request): Promise<boolean> {
     if (!code) return false;
     const data = await getAllData();
     const user = data.users.find((u) => u.code.toUpperCase() === String(code).toUpperCase());
-    return Boolean(user && user.role === 'admin');
+    return isAdminUser(user);
   } catch {
     return false;
   }
@@ -91,7 +97,7 @@ app.post('/api/login', async (req, res) => {
     });
 
     const updated = { ...user, lastLoginAt: new Date().toISOString() };
-    res.json({ user: updated, state: sanitizeForViewer(data, user.role === 'admin') });
+    res.json({ user: updated, state: sanitizeForViewer(data, isAdminUser(user)) });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -156,6 +162,17 @@ app.delete('/api/polls/:id', async (req, res) => {
 app.post('/api/votes', async (req, res) => {
   try {
     const { voteRecord, updatedUserGroups, newPollOption } = req.body;
+    if (!voteRecord || !voteRecord.userId) {
+      return res.status(400).json({ error: 'Invalid vote record' });
+    }
+
+    // Administrators are view/create only and may never cast a vote.
+    const preState = await getAllData();
+    const voter = preState.users.find((u) => u.id === voteRecord.userId);
+    if (isAdminUser(voter) || (await viewerIsAdmin(req))) {
+      return res.status(403).json({ error: 'Administrators cannot vote' });
+    }
+
     await insertVote(voteRecord);
 
     if (updatedUserGroups && updatedUserGroups.length > 0) {
@@ -192,7 +209,11 @@ app.post('/api/groups', async (req, res) => {
 app.delete('/api/groups/:name', async (req, res) => {
   try {
     const { name } = req.params;
-    await deleteGroup(decodeURIComponent(name));
+    const decoded = decodeURIComponent(name);
+    if (decoded === ADMIN_GROUP) {
+      return res.status(400).json({ error: 'The admin group cannot be removed' });
+    }
+    await deleteGroup(decoded);
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

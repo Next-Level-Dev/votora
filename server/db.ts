@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { User, Poll, VoteRecord, ScheduleSlot } from '../src/types';
 import { INITIAL_USERS, INITIAL_POLLS, INITIAL_VOTES, INITIAL_GROUPS, INITIAL_SCHEDULES } from '../src/utils/storage';
-import { compareScheduleSlots } from '../src/utils/votingEngine';
+import { compareScheduleSlots, normalizeUser, ADMIN_GROUP } from '../src/utils/votingEngine';
 
 const DATA_DIR = path.resolve(process.cwd(), 'data');
 const DB_FILE = path.join(DATA_DIR, 'votora.sqlite');
@@ -109,10 +109,14 @@ export async function getDb(): Promise<Database> {
       db.run(
         `INSERT OR REPLACE INTO users (id, code, name, role, groups_json, created_at, last_login_at)
          VALUES (?, ?, ?, ?, ?, ?, ?);`,
-        ['user_admin_01', envAdminCode, 'Kaptan / Host (Admin)', 'admin', JSON.stringify(['Friends', 'Admins']), now, null]
+        ['user_admin_01', envAdminCode, 'Kaptan / Host (Admin)', 'admin', JSON.stringify([ADMIN_GROUP]), now, null]
       );
     }
   }
+
+  // Repair any legacy/conflicting user data so the admin invariant holds:
+  // admins live only in the admin group, everyone else is never in it.
+  migrateUsers(db);
 
   // Also check if schedules table is populated
   const schedCountRes = db.exec("SELECT COUNT(*) as count FROM schedules;");
@@ -151,6 +155,42 @@ function persistDb() {
   fs.writeFileSync(DB_FILE, buffer);
 }
 
+/**
+ * Reconcile persisted user rows with the admin invariant. A user is considered
+ * an admin if they belong to the admin group OR carry the legacy `admin` role.
+ * The migration then makes the admin group the single source of truth.
+ */
+function migrateUsers(database: Database) {
+  const res = database.exec("SELECT id, role, groups_json FROM users;");
+  if (res.length === 0) return;
+
+  for (const row of res[0].values) {
+    const id = row[0] as string;
+    const role = row[1] as string;
+    let groups: string[] = [];
+    try {
+      groups = JSON.parse((row[2] as string) || '[]');
+    } catch {
+      groups = [];
+    }
+
+    const isAdmin = role === 'admin' || groups.includes(ADMIN_GROUP);
+    const nextRole = isAdmin ? 'admin' : 'voter';
+    const nextGroups = isAdmin ? [ADMIN_GROUP] : groups.filter((g) => g !== ADMIN_GROUP);
+
+    const changed =
+      nextRole !== role || JSON.stringify(nextGroups) !== JSON.stringify(groups);
+
+    if (changed) {
+      database.run("UPDATE users SET role = ?, groups_json = ? WHERE id = ?;", [
+        nextRole,
+        JSON.stringify(nextGroups),
+        id,
+      ]);
+    }
+  }
+}
+
 function seedDatabase(database: Database) {
   const envAdminCode = process.env.ADMIN_CODE ? process.env.ADMIN_CODE.trim().toUpperCase() : null;
 
@@ -161,11 +201,12 @@ function seedDatabase(database: Database) {
 
   // Seed Users
   for (const u of INITIAL_USERS) {
-    const userCode = (u.role === 'admin' && envAdminCode) ? envAdminCode : u.code;
+    const normalized = normalizeUser(u);
+    const userCode = (normalized.role === 'admin' && envAdminCode) ? envAdminCode : normalized.code;
     database.run(
       `INSERT OR REPLACE INTO users (id, code, name, role, groups_json, created_at, last_login_at)
        VALUES (?, ?, ?, ?, ?, ?, ?);`,
-      [u.id, userCode, u.name, u.role, JSON.stringify(u.groups), u.createdAt, u.lastLoginAt || null]
+      [normalized.id, userCode, normalized.name, normalized.role, JSON.stringify(normalized.groups), normalized.createdAt, normalized.lastLoginAt || null]
     );
   }
 
@@ -242,15 +283,17 @@ export async function getAllData() {
   const users: User[] = [];
   if (userRows.length > 0) {
     for (const row of userRows[0].values) {
-      users.push({
-        id: row[0] as string,
-        code: row[1] as string,
-        name: row[2] as string,
-        role: row[3] as any,
-        groups: JSON.parse((row[4] as string) || '[]'),
-        createdAt: row[5] as string,
-        lastLoginAt: (row[6] as string) || undefined,
-      });
+      users.push(
+        normalizeUser({
+          id: row[0] as string,
+          code: row[1] as string,
+          name: row[2] as string,
+          role: row[3] as any,
+          groups: JSON.parse((row[4] as string) || '[]'),
+          createdAt: row[5] as string,
+          lastLoginAt: (row[6] as string) || undefined,
+        })
+      );
     }
   }
 
@@ -334,17 +377,44 @@ export async function getAllData() {
 
 export async function insertUser(user: User) {
   const database = await getDb();
+  const normalized = normalizeUser(user);
   database.run(
     `INSERT INTO users (id, code, name, role, groups_json, created_at, last_login_at)
      VALUES (?, ?, ?, ?, ?, ?, ?);`,
-    [user.id, user.code, user.name, user.role, JSON.stringify(user.groups), user.createdAt, user.lastLoginAt || null]
+    [normalized.id, normalized.code, normalized.name, normalized.role, JSON.stringify(normalized.groups), normalized.createdAt, normalized.lastLoginAt || null]
   );
   persistDb();
 }
 
 export async function updateUserGroups(userId: string, groups: string[]) {
   const database = await getDb();
-  database.run("UPDATE users SET groups_json = ? WHERE id = ?;", [JSON.stringify(groups), userId]);
+
+  // Read the existing membership so admin status (admin group) is the source of truth.
+  const existing = database.exec("SELECT role, groups_json FROM users WHERE id = ?;", [userId]);
+  let existingRole = 'voter';
+  let existingGroups: string[] = [];
+  if (existing.length > 0 && existing[0].values.length > 0) {
+    existingRole = existing[0].values[0][0] as string;
+    try {
+      existingGroups = JSON.parse((existing[0].values[0][1] as string) || '[]');
+    } catch {
+      existingGroups = [];
+    }
+  }
+
+  const isAdmin = existingRole === 'admin' || existingGroups.includes(ADMIN_GROUP);
+
+  // Admins are locked to the admin group; non-admins can never be added to it.
+  const nextGroups = isAdmin
+    ? [ADMIN_GROUP]
+    : (groups || []).filter((g) => g !== ADMIN_GROUP);
+  const nextRole = isAdmin ? 'admin' : 'voter';
+
+  database.run("UPDATE users SET role = ?, groups_json = ? WHERE id = ?;", [
+    nextRole,
+    JSON.stringify(nextGroups),
+    userId,
+  ]);
   persistDb();
 }
 

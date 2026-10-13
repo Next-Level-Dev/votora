@@ -8,7 +8,7 @@ import { UsersManagementView } from './components/UsersManagementView';
 import { VoterView } from './components/VoterView';
 import { VotingModal } from './components/VotingModal';
 import { ScheduleView } from './components/ScheduleView';
-import { sortScheduleSlots } from './utils/votingEngine';
+import { sortScheduleSlots, normalizeUser, ADMIN_GROUP } from './utils/votingEngine';
 
 export default function App() {
   // App state
@@ -50,6 +50,7 @@ export default function App() {
   const updateState = (newState: AppState) => {
     const sortedState: AppState = {
       ...newState,
+      users: (newState.users || []).map((u) => normalizeUser(u)),
       schedules: sortScheduleSlots(newState.schedules || []),
     };
     setAppState(sortedState);
@@ -161,6 +162,9 @@ export default function App() {
     updatedUserGroups?: string[],
     newPollOption?: PollOption
   ) => {
+    // Administrators are view/create only and may never cast a vote.
+    if (!currentUser || currentUser.role === 'admin') return;
+
     const existingIndex = appState.votes.findIndex(
       (v) => v.pollId === voteRecord.pollId && v.userId === voteRecord.userId
     );
@@ -229,11 +233,13 @@ export default function App() {
 
   const handleUpdateUserGroups = (userId: string, newGroups: string[]) => {
     const nextUsers = appState.users.map((u) =>
-      u.id === userId ? { ...u, groups: newGroups } : u
+      u.id === userId
+        ? normalizeUser({ ...u, groups: newGroups })
+        : u
     );
     updateState({ ...appState, users: nextUsers });
     if (currentUser?.id === userId) {
-      setCurrentUser({ ...currentUser, groups: newGroups });
+      setCurrentUser(normalizeUser({ ...currentUser, groups: newGroups }));
     }
 
     fetch(`/api/users/${userId}/groups`, {
@@ -286,6 +292,7 @@ export default function App() {
   };
 
   const handleDeleteGroup = (groupName: string) => {
+    if (groupName === ADMIN_GROUP) return;
     const nextGroups = appState.groups.filter((g) => g !== groupName);
     const nextUsers = appState.users.map((u) => ({
       ...u,

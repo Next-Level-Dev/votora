@@ -110,6 +110,12 @@ export const translations = {
     lastActive: 'Active',
     neverLoggedIn: 'Never',
     editGroups: 'Edit',
+    initialGroupLabel: 'Starting Group',
+    adminGroupHint: 'Administrator: can view hidden data and create polls, but cannot vote.',
+    friendGroupHint: 'Regular member: can vote in polls. More groups can be added later.',
+    adminGroupLocked: 'Administrator accounts are locked to the Admins group.',
+    adminGroupReserved: 'Admin group is reserved for administrators.',
+    adminViewOnly: 'View only',
 
     // Activity & Votes
     activityTitle: 'Vote Activity',
@@ -289,6 +295,12 @@ export const translations = {
     lastActive: 'Son Giriş',
     neverLoggedIn: 'Girilmedi',
     editGroups: 'Düzenle',
+    initialGroupLabel: 'Başlangıç Grubu',
+    adminGroupHint: 'Yönetici: gizli verileri görebilir ve anket oluşturabilir, ancak oy veremez.',
+    friendGroupHint: 'Normal üye: anketlerde oy verebilir. Diğer gruplar sonradan eklenebilir.',
+    adminGroupLocked: 'Yönetici hesapları Admins grubuna kilitlidir.',
+    adminGroupReserved: 'Yönetici grubu yalnızca yöneticilere aittir.',
+    adminViewOnly: 'Sadece görüntüle',
 
     // Activity & Votes
     activityTitle: 'Oy Geçmişi',

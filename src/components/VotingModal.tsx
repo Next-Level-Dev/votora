@@ -194,13 +194,13 @@ export const VotingModal: React.FC<VotingModalProps> = ({
                       key={opt.id}
                       className="flex items-center justify-between p-2 rounded border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 text-xs"
                     >
-                      <div className="flex items-center gap-2 truncate">
-                        <span className="font-mono text-neutral-400 w-4 font-bold">{idx + 1}.</span>
-                        <span className="font-medium text-neutral-900 dark:text-neutral-100 truncate">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-mono text-neutral-400 w-4 font-bold shrink-0">{idx + 1}.</span>
+                        <span className="font-medium text-neutral-900 dark:text-neutral-100 break-words whitespace-normal flex-1 min-w-0">
                           {opt.text}
                         </span>
                         {opt.isWriteIn && (
-                          <span className="text-[10px] text-neutral-400">({opt.suggestedBy})</span>
+                          <span className="text-[10px] text-neutral-400 shrink-0">({opt.suggestedBy})</span>
                         )}
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
@@ -238,14 +238,14 @@ export const VotingModal: React.FC<VotingModalProps> = ({
                     key={opt.id}
                     type="button"
                     onClick={() => setSelectedSingleId(opt.id)}
-                    className={`w-full flex items-center justify-between p-2.5 rounded border text-left text-xs transition-colors cursor-pointer ${
+                    className={`w-full flex items-center justify-between gap-2 p-2.5 rounded border text-left text-xs transition-colors cursor-pointer ${
                       isSelected
                         ? 'border-neutral-900 dark:border-neutral-100 bg-neutral-100 dark:bg-neutral-800 font-semibold text-neutral-900 dark:text-neutral-100'
                         : 'border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800/50'
                     }`}
                   >
-                    <span className="truncate">{opt.text}</span>
-                    <span className="font-mono text-xs">{isSelected ? '◉' : '○'}</span>
+                    <span className="break-words whitespace-normal flex-1 min-w-0">{opt.text}</span>
+                    <span className="font-mono text-xs shrink-0">{isSelected ? '◉' : '○'}</span>
                   </button>
                 );
               })}
@@ -260,9 +260,9 @@ export const VotingModal: React.FC<VotingModalProps> = ({
                 return (
                   <div
                     key={opt.id}
-                    className="p-2 rounded border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 flex items-center justify-between gap-2 text-xs"
+                    className="p-2 rounded border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 flex items-start justify-between gap-2 text-xs"
                   >
-                    <span className="font-medium text-neutral-900 dark:text-neutral-100 truncate">
+                    <span className="font-medium text-neutral-900 dark:text-neutral-100 break-words whitespace-normal flex-1 min-w-0">
                       {opt.text}
                     </span>
                     <div className="flex items-center gap-1 shrink-0">
@@ -305,14 +305,14 @@ export const VotingModal: React.FC<VotingModalProps> = ({
                     key={opt.id}
                     type="button"
                     onClick={() => handleMultipleToggle(opt.id)}
-                    className={`w-full flex items-center justify-between p-2.5 rounded border text-left text-xs transition-colors cursor-pointer ${
+                    className={`w-full flex items-center justify-between gap-2 p-2.5 rounded border text-left text-xs transition-colors cursor-pointer ${
                       isChecked
                         ? 'border-neutral-900 dark:border-neutral-100 bg-neutral-100 dark:bg-neutral-800 font-semibold'
                         : 'border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-300'
                     }`}
                   >
-                    <span className="truncate">{opt.text}</span>
-                    <span className="font-mono text-xs">{isChecked ? '☑' : '☐'}</span>
+                    <span className="break-words whitespace-normal flex-1 min-w-0">{opt.text}</span>
+                    <span className="font-mono text-xs shrink-0">{isChecked ? '☑' : '☐'}</span>
                   </button>
                 );
               })}

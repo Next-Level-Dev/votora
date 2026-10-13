@@ -26,7 +26,8 @@ export const PollCard: React.FC<PollCardProps> = ({
   language,
 }) => {
   const t = translations[language];
-  const hasAccess = canUserAccessPoll(currentUser, poll);
+  const isAdmin = currentUser.role === 'admin';
+  const hasAccess = !isAdmin && canUserAccessPoll(currentUser, poll);
   const userVote = votes.find((v) => v.pollId === poll.id && v.userId === currentUser.id);
   const stats = calculatePollStats(poll, votes);
 
@@ -46,7 +47,7 @@ export const PollCard: React.FC<PollCardProps> = ({
   return (
     <div
       className={`rounded-lg border p-3.5 sm:p-4 flex flex-col justify-between transition-colors ${
-        hasAccess
+        hasAccess || isAdmin
           ? 'bg-white dark:bg-neutral-900 border-neutral-300 dark:border-neutral-800'
           : 'bg-neutral-50 dark:bg-neutral-950 border-neutral-200 dark:border-neutral-800 opacity-60'
       }`}
@@ -101,8 +102,8 @@ export const PollCard: React.FC<PollCardProps> = ({
           </p>
         )}
 
-        {/* Short option preview */}
-        <div className="mt-2 text-[11px] text-neutral-600 dark:text-neutral-400 truncate">
+        {/* Short option preview (wraps for long options on mobile) */}
+        <div className="mt-2 text-[11px] text-neutral-600 dark:text-neutral-400 break-words whitespace-normal line-clamp-3">
           {poll.options.map((o) => o.text).join(' · ')}
         </div>
       </div>
@@ -126,7 +127,9 @@ export const PollCard: React.FC<PollCardProps> = ({
             {t.viewResults}
           </button>
 
-          {hasAccess ? (
+          {isAdmin ? (
+            <span className="text-[11px] text-neutral-400 font-mono">{t.adminViewOnly}</span>
+          ) : hasAccess ? (
             <button
               type="button"
               onClick={() => onOpenVote(poll)}

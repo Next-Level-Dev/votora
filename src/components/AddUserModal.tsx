@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { User, UserRole, Language } from '../types';
+import { User, Language } from '../types';
 import { translations } from '../utils/i18n';
+import { ADMIN_GROUP } from '../utils/votingEngine';
 import { X } from 'lucide-react';
 
 interface AddUserModalProps {
-  groups: string[];
   existingUsers: User[];
   onSave: (user: User) => void;
   onClose: () => void;
@@ -12,7 +12,6 @@ interface AddUserModalProps {
 }
 
 export const AddUserModal: React.FC<AddUserModalProps> = ({
-  groups,
   existingUsers,
   onSave,
   onClose,
@@ -22,8 +21,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
 
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
-  const [role, setRole] = useState<UserRole>('voter');
-  const [selectedGroups, setSelectedGroups] = useState<string[]>(['Friends']);
+  const [initialGroup, setInitialGroup] = useState<string>('Friends');
   const [error, setError] = useState('');
 
   const generateCode = () => {
@@ -31,14 +29,6 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
     const prefix = clean ? clean : 'USER';
     const rand = Math.floor(10 + Math.random() * 90);
     setCode(`${prefix}-${rand}`);
-  };
-
-  const toggleGroup = (grp: string) => {
-    if (selectedGroups.includes(grp)) {
-      setSelectedGroups(selectedGroups.filter((g) => g !== grp));
-    } else {
-      setSelectedGroups([...selectedGroups, grp]);
-    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -59,12 +49,13 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
       return;
     }
 
+    const isAdmin = initialGroup === ADMIN_GROUP;
     const newUser: User = {
       id: `user_${Date.now()}`,
       name: name.trim(),
       code: cleanCode,
-      role,
-      groups: selectedGroups,
+      role: isAdmin ? 'admin' : 'voter',
+      groups: [initialGroup],
       createdAt: new Date().toISOString(),
     };
 
@@ -133,57 +124,35 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
 
           <div>
             <label className="block text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
-              {t.roleLabel}
+              {t.initialGroupLabel}
             </label>
             <div className="grid grid-cols-2 gap-1.5 font-mono">
               <button
                 type="button"
-                onClick={() => setRole('voter')}
+                onClick={() => setInitialGroup('Friends')}
                 className={`py-1.5 text-xs rounded border cursor-pointer ${
-                  role === 'voter'
+                  initialGroup === 'Friends'
                     ? 'border-neutral-900 dark:border-neutral-100 bg-neutral-100 dark:bg-neutral-800 font-semibold'
                     : 'border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400'
                 }`}
               >
-                {t.voterRole}
+                Friends
               </button>
               <button
                 type="button"
-                onClick={() => setRole('admin')}
+                onClick={() => setInitialGroup(ADMIN_GROUP)}
                 className={`py-1.5 text-xs rounded border cursor-pointer ${
-                  role === 'admin'
+                  initialGroup === ADMIN_GROUP
                     ? 'border-neutral-900 dark:border-neutral-100 bg-neutral-100 dark:bg-neutral-800 font-semibold'
                     : 'border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400'
                 }`}
               >
-                {t.adminRole}
+                {ADMIN_GROUP}
               </button>
             </div>
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
-              {t.assignGroupsLabel}
-            </label>
-            <div className="flex flex-wrap gap-1">
-              {groups.map((grp) => {
-                const isSelected = selectedGroups.includes(grp);
-                return (
-                  <button
-                    key={grp}
-                    type="button"
-                    onClick={() => toggleGroup(grp)}
-                    className={`px-2 py-0.5 rounded text-xs cursor-pointer font-mono ${
-                      isSelected
-                        ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 font-medium'
-                        : 'border border-neutral-300 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400'
-                    }`}
-                  >
-                    {grp}
-                  </button>
-                );
-              })}
-            </div>
+            <p className="mt-1.5 text-[10px] text-neutral-500 dark:text-neutral-400 leading-snug">
+              {initialGroup === ADMIN_GROUP ? t.adminGroupHint : t.friendGroupHint}
+            </p>
           </div>
 
           <div className="pt-2 border-t border-neutral-200 dark:border-neutral-800 flex justify-end gap-2">

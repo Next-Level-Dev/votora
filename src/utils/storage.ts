@@ -1,5 +1,5 @@
 import { Poll, User, VoteRecord, ScheduleSlot } from '../types';
-import { sortScheduleSlots } from './votingEngine';
+import { sortScheduleSlots, normalizeUser, ADMIN_GROUP } from './votingEngine';
 
 const STORAGE_KEY = 'votora_app_data_v3';
 
@@ -11,7 +11,7 @@ export interface AppState {
   schedules: ScheduleSlot[];
 }
 
-export const INITIAL_GROUPS: string[] = ['Friends', '2D', 'Live Action', '3D', 'Admins'];
+export const INITIAL_GROUPS: string[] = ['Friends', '2D', 'Live Action', '3D', ADMIN_GROUP];
 
 export const INITIAL_USERS: User[] = [
   {
@@ -19,7 +19,7 @@ export const INITIAL_USERS: User[] = [
     code: 'ADMIN-2026',
     name: 'Kaptan / Host (Admin)',
     role: 'admin',
-    groups: ['Friends', 'Admins', '2D', 'Live Action'],
+    groups: [ADMIN_GROUP],
     createdAt: '2026-10-01T10:00:00.000Z',
     lastLoginAt: '2026-10-12T06:00:00.000Z',
   },
@@ -380,6 +380,7 @@ export function loadAppState(): AppState {
       if (parsed.users && parsed.polls && parsed.votes && parsed.groups) {
         return {
           ...parsed,
+          users: (parsed.users as User[]).map((u) => normalizeUser(u)),
           schedules: sortScheduleSlots(parsed.schedules || INITIAL_SCHEDULES),
         };
       }
@@ -388,7 +389,7 @@ export function loadAppState(): AppState {
     // Fallback
   }
   const defaultState: AppState = {
-    users: INITIAL_USERS,
+    users: INITIAL_USERS.map((u) => normalizeUser(u)),
     polls: INITIAL_POLLS,
     votes: INITIAL_VOTES,
     groups: INITIAL_GROUPS,

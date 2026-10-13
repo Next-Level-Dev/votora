@@ -1,5 +1,32 @@
 import { Poll, ScheduleSlot, User, VoteRecord } from '../types';
 
+/**
+ * Group that grants administrator privileges. Being a member of this group is
+ * the single source of truth for "is this account an admin?" — there is no
+ * separate administrator flag/setting.
+ */
+export const ADMIN_GROUP = 'Admins';
+
+/** True when the given user belongs to the administrator group. */
+export function isUserAdmin(user: { role?: User['role']; groups?: string[] }): boolean {
+  return Boolean(user && Array.isArray(user.groups) && user.groups.includes(ADMIN_GROUP));
+}
+
+/**
+ * Reconcile a user's role and group membership against the admin invariant:
+ * - Members of the admin group are admins and may ONLY belong to that group.
+ * - Non-admins may never belong to the admin group.
+ * Used to repair legacy/conflicting data and to enforce the rule on writes.
+ */
+export function normalizeUser<T extends { groups: string[]; role?: User['role'] }>(user: T): T {
+  const isAdmin = Array.isArray(user.groups) && user.groups.includes(ADMIN_GROUP);
+  return {
+    ...user,
+    role: (isAdmin ? 'admin' : 'voter') as User['role'],
+    groups: isAdmin ? [ADMIN_GROUP] : (user.groups || []).filter((g) => g !== ADMIN_GROUP),
+  };
+}
+
 export interface OptionResult {
   optionId: string;
   text: string;

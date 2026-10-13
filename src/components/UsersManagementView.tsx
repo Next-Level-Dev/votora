@@ -3,7 +3,8 @@ import { User, Language } from '../types';
 import { translations } from '../utils/i18n';
 import { AddUserModal } from './AddUserModal';
 import { ShareUserModal } from './ShareUserModal';
-import { Trash2, Plus, Share2, Users, FolderPlus } from 'lucide-react';
+import { ADMIN_GROUP } from '../utils/votingEngine';
+import { Trash2, Plus, Share2, Users, FolderPlus, Lock } from 'lucide-react';
 
 interface UsersManagementViewProps {
   currentUser: User;
@@ -138,29 +139,47 @@ export const UsersManagementView: React.FC<UsersManagementViewProps> = ({
                   </div>
 
                   {editingUserGroupsId === u.id && (
-                    <div className="mt-2 p-2 bg-neutral-50 dark:bg-neutral-950 rounded border border-neutral-200 dark:border-neutral-800 flex flex-wrap gap-1">
-                      {groups.map((g) => {
-                        const hasGrp = u.groups.includes(g);
-                        return (
-                          <button
-                            key={g}
-                            type="button"
-                            onClick={() => {
-                              const next = hasGrp
-                                ? u.groups.filter((item) => item !== g)
-                                : [...u.groups, g];
-                              onUpdateUserGroups(u.id, next);
-                            }}
-                            className={`px-2 py-0.5 text-[10px] rounded cursor-pointer ${
-                              hasGrp
-                                ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900'
-                                : 'bg-neutral-200 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400'
-                            }`}
-                          >
-                            {g} {hasGrp ? '✓' : '+'}
-                          </button>
-                        );
-                      })}
+                    <div className="mt-2 p-2 bg-neutral-50 dark:bg-neutral-950 rounded border border-neutral-200 dark:border-neutral-800">
+                      {u.role === 'admin' ? (
+                        <div className="text-[10px] text-neutral-500 flex items-center gap-1">
+                          <Lock className="w-3 h-3" />
+                          <span>{t.adminGroupLocked}</span>
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap gap-1">
+                          {groups.map((g) => {
+                            const hasGrp = u.groups.includes(g);
+                            const isAdminGroup = g === ADMIN_GROUP;
+                            return (
+                              <button
+                                key={g}
+                                type="button"
+                                disabled={isAdminGroup}
+                                title={isAdminGroup ? t.adminGroupReserved : undefined}
+                                onClick={() => {
+                                  const next = hasGrp
+                                    ? u.groups.filter((item) => item !== g)
+                                    : [...u.groups, g];
+                                  onUpdateUserGroups(u.id, next);
+                                }}
+                                className={`px-2 py-0.5 text-[10px] rounded ${
+                                  isAdminGroup
+                                    ? 'cursor-not-allowed opacity-40 bg-neutral-200 dark:bg-neutral-800 text-neutral-500'
+                                    : 'cursor-pointer'
+                                } ${
+                                  !isAdminGroup && hasGrp
+                                    ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900'
+                                    : !isAdminGroup
+                                      ? 'bg-neutral-200 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400'
+                                      : ''
+                                }`}
+                              >
+                                {g} {isAdminGroup ? '★' : hasGrp ? '✓' : '+'}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -260,7 +279,7 @@ export const UsersManagementView: React.FC<UsersManagementViewProps> = ({
                     {members.length} {t.membersCount} ({members.map((m) => m.name).join(', ')})
                   </div>
                 </div>
-                {grp !== 'Friends' && grp !== 'Admins' && (
+                {grp !== 'Friends' && grp !== ADMIN_GROUP && (
                   <button
                     type="button"
                     onClick={() => {
@@ -283,7 +302,6 @@ export const UsersManagementView: React.FC<UsersManagementViewProps> = ({
       {/* Modals */}
       {showAddUser && (
         <AddUserModal
-          groups={groups}
           existingUsers={users}
           onSave={(u) => {
             onAddUser(u);
