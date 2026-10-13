@@ -137,4 +137,7 @@ dist
 
 bun.lock
 DEPLOYMENT.md
-data
+data/
+data/votora.sqlite
+data/votora.db
+.data
