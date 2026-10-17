@@ -6,6 +6,7 @@ import {
   canUserInteractSchedule,
   compareDateLabels,
   compareScheduleSlots,
+  isUserAdmin,
   sortScheduleSlots,
 } from '../utils/votingEngine';
 import {
@@ -195,11 +196,15 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                 {/* Slots stack inside this day */}
                 <div className="py-2 space-y-3 flex-1 flex flex-col justify-center">
                   {slots.map((slot) => {
-                    const isAttending = slot.attendeeIds.includes(currentUser.id);
+                    // Admins are control accounts, never event participants.
+                    const isAdminAccount = isUserAdmin(currentUser);
+                    const isAttending =
+                      !isAdminAccount && slot.attendeeIds.includes(currentUser.id);
                     const canInteract = canUserInteractSchedule(currentUser, slot);
                     const attendeeCount = slot.attendeeIds.length;
                     const hasUserAttended = slot.isCompleted && isAttending;
-                    const hasUserMissed = slot.isCompleted && !isAttending;
+                    const hasUserMissed =
+                      !isAdminAccount && slot.isCompleted && !isAttending;
 
                     return (
                       <div
@@ -215,7 +220,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                         {/* Time & attendance indicator */}
                         <div className="flex items-center justify-center gap-1 text-[11px] font-mono font-bold text-neutral-600 dark:text-neutral-400">
                           <span>{slot.time}</span>
-                          {slot.isCompleted && (
+                          {slot.isCompleted && !isAdminAccount && (
                             <span
                               className={`text-[9px] px-1 py-0.2 rounded font-sans font-bold ${
                                 isAttending
@@ -245,7 +250,9 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                             }`}
                             title={
                               slot.isCompleted
-                                ? `${attendeeCount} ${t.attendeesCount} (${isAttending ? t.attendedBadge : t.missedBadge})`
+                                ? isAdminAccount
+                                  ? `${attendeeCount} ${t.attendeesCount}`
+                                  : `${attendeeCount} ${t.attendeesCount} (${isAttending ? t.attendedBadge : t.missedBadge})`
                                 : `${attendeeCount} ${language === 'tr' ? 'olası katılımcı' : 'possible attendees'}`
                             }
                           >
@@ -284,19 +291,21 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                         <div className="pt-1 flex flex-col items-center gap-1">
                           {slot.isCompleted ? (
                             <div className="flex flex-col items-center gap-0.5">
-                              <span
-                                className={`text-[10px] font-semibold flex items-center gap-0.5 px-1.5 py-0.5 rounded ${
-                                  isAttending
-                                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
-                                    : 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
-                                }`}
-                              >
-                                {isAttending ? (
-                                  <span>{t.attendedBadge}</span>
-                                ) : (
-                                  <span>{t.missedBadge}</span>
-                                )}
-                              </span>
+                              {!isAdminAccount && (
+                                <span
+                                  className={`text-[10px] font-semibold flex items-center gap-0.5 px-1.5 py-0.5 rounded ${
+                                    isAttending
+                                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                      : 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
+                                  }`}
+                                >
+                                  {isAttending ? (
+                                    <span>{t.attendedBadge}</span>
+                                  ) : (
+                                    <span>{t.missedBadge}</span>
+                                  )}
+                                </span>
+                              )}
                               <span className="text-[9px] text-neutral-400 font-mono flex items-center gap-0.5">
                                 <Lock className="w-2.5 h-2.5" />
                                 <span>{t.completedBadge}</span>
@@ -314,7 +323,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                             >
                               {isAttending ? t.attendingBtn : t.attendBtn}
                             </button>
-                          ) : (
+                          ) : isAdminAccount ? null : (
                             <span className="text-[10px] text-neutral-400 font-mono">
                               🔒 {t.lockedToGroup}
                             </span>
@@ -504,7 +513,7 @@ const AttendeesModal: React.FC<AttendeesModalProps> = ({
                 >
                   <option value="">{language === 'tr' ? 'Kullanıcı seç...' : 'Select user...'}</option>
                   {users
-                    .filter((u) => !slot.attendeeIds.includes(u.id))
+                    .filter((u) => !isUserAdmin(u) && !slot.attendeeIds.includes(u.id))
                     .map((u) => (
                       <option key={u.id} value={u.id}>
                         {u.name}
@@ -756,7 +765,7 @@ const EditSlotModal: React.FC<EditSlotModalProps> = ({
               >
                 <option value="">{language === 'tr' ? 'Katılımcı ekle...' : 'Add attendee...'}</option>
                 {users
-                  .filter((u) => !attendeeIds.includes(u.id))
+                  .filter((u) => !isUserAdmin(u) && !attendeeIds.includes(u.id))
                   .map((u) => (
                     <option key={u.id} value={u.id}>
                       {u.name}

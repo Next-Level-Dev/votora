@@ -8,7 +8,7 @@ import { UsersManagementView } from './components/UsersManagementView';
 import { VoterView } from './components/VoterView';
 import { VotingModal } from './components/VotingModal';
 import { ScheduleView } from './components/ScheduleView';
-import { sortScheduleSlots, normalizeUser, ADMIN_GROUP } from './utils/votingEngine';
+import { sanitizeAppState, normalizeUser, ADMIN_GROUP } from './utils/votingEngine';
 
 export default function App() {
   // App state
@@ -46,15 +46,16 @@ export default function App() {
     localStorage.setItem('votora_lang', language);
   }, [language]);
 
-  // Sync state helper (always keeps schedules sorted deterministically)
+  // Sanitizes state before it reaches the client store: admin invite codes are
+  // blanked and admin accounts are stripped from schedule attendees.
   const updateState = (newState: AppState) => {
-    const sortedState: AppState = {
+    const safeState = sanitizeAppState({
       ...newState,
-      users: (newState.users || []).map((u) => normalizeUser(u)),
-      schedules: sortScheduleSlots(newState.schedules || []),
-    };
-    setAppState(sortedState);
-    saveAppState(sortedState);
+      users: newState.users || [],
+      schedules: newState.schedules || [],
+    });
+    setAppState(safeState);
+    saveAppState(safeState);
   };
 
   // Login handler (validated server-side so invite codes never need to be
@@ -315,7 +316,8 @@ export default function App() {
 
   // Schedule Management
   const handleToggleAttendance = (slotId: string) => {
-    if (!currentUser) return;
+    // Admins are control accounts, never event participants.
+    if (!currentUser || currentUser.role === 'admin') return;
     const slot = appState.schedules.find((s) => s.id === slotId);
     if (!slot || slot.isCompleted) return;
 

@@ -118,6 +118,10 @@ export async function getDb(): Promise<Database> {
   // admins live only in the admin group, everyone else is never in it.
   migrateUsers(db);
 
+  // Admins are control accounts, not real participants: remove them from any
+  // schedule attendee lists left over from older versions.
+  stripAdminsFromSchedules(db);
+
   // Also check if schedules table is populated
   const schedCountRes = db.exec("SELECT COUNT(*) as count FROM schedules;");
   const schedCount = (schedCountRes[0]?.values[0]?.[0] as number) || 0;
@@ -188,6 +192,55 @@ function migrateUsers(database: Database) {
         id,
       ]);
     }
+  }
+}
+
+/**
+ * Remove admin user ids (and their paired names) from every schedule's
+ * attendee lists — admins are reserved for access control and are never
+ * actual event participants.
+ */
+function stripAdminsFromSchedules(database: Database) {
+  const adminRes = database.exec("SELECT id FROM users WHERE role = 'admin';");
+  const adminIds = new Set<string>(
+    adminRes.length > 0 ? adminRes[0].values.map((v) => v[0] as string) : []
+  );
+  if (adminIds.size === 0) return;
+
+  const schedRes = database.exec("SELECT id, attendee_ids_json, attendee_names_json FROM schedules;");
+  if (schedRes.length === 0) return;
+
+  for (const row of schedRes[0].values) {
+    const slotId = row[0] as string;
+    let ids: string[] = [];
+    let names: string[] = [];
+    try {
+      ids = JSON.parse((row[1] as string) || '[]');
+    } catch {
+      ids = [];
+    }
+    try {
+      names = JSON.parse((row[2] as string) || '[]');
+    } catch {
+      names = [];
+    }
+
+    if (!ids.some((id) => adminIds.has(id))) continue;
+
+    const nextIds: string[] = [];
+    const nextNames: string[] = [];
+    ids.forEach((id, idx) => {
+      if (!adminIds.has(id)) {
+        nextIds.push(id);
+        nextNames.push(names[idx] ?? '');
+      }
+    });
+
+    database.run("UPDATE schedules SET attendee_ids_json = ?, attendee_names_json = ? WHERE id = ?;", [
+      JSON.stringify(nextIds),
+      JSON.stringify(nextNames),
+      slotId,
+    ]);
   }
 }
 

@@ -117,9 +117,11 @@ export const UsersManagementView: React.FC<UsersManagementViewProps> = ({
                     <span className="font-bold text-neutral-900 dark:text-neutral-100 truncate">
                       {u.name}
                     </span>
-                    <span className="font-mono text-[11px] bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded text-neutral-800 dark:text-neutral-200 shrink-0">
-                      {u.code}
-                    </span>
+                    {u.code && (
+                      <span className="font-mono text-[11px] bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded text-neutral-800 dark:text-neutral-200 shrink-0">
+                        {u.code}
+                      </span>
+                    )}
                     {u.role === 'admin' && (
                       <span className="text-[10px] text-neutral-500 font-mono">★ admin</span>
                     )}
@@ -185,14 +187,16 @@ export const UsersManagementView: React.FC<UsersManagementViewProps> = ({
                 </div>
 
                 <div className="flex items-center gap-1 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setSharingUser(u)}
-                    className="p-1.5 rounded border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 cursor-pointer"
-                    title={t.shareViaApp}
-                  >
-                    <Share2 className="w-3.5 h-3.5" />
-                  </button>
+                  {u.role !== 'admin' && (
+                    <button
+                      type="button"
+                      onClick={() => setSharingUser(u)}
+                      className="p-1.5 rounded border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 cursor-pointer"
+                      title={t.shareViaApp}
+                    >
+                      <Share2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
 
                   {u.id !== currentUser.id && (
                     <button
@@ -306,7 +310,10 @@ export const UsersManagementView: React.FC<UsersManagementViewProps> = ({
           onSave={(u) => {
             onAddUser(u);
             setShowAddUser(false);
-            setSharingUser(u);
+            // Admin codes are never shared or displayed.
+            if (u.role !== 'admin') {
+              setSharingUser(u);
+            }
           }}
           onClose={() => setShowAddUser(false)}
           language={language}

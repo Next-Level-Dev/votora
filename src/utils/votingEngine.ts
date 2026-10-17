@@ -283,14 +283,16 @@ export function canUserSeeSchedule(user: User, slot: { targetGroups?: string[] }
 }
 
 /**
- * Check if a user can interact with (RSVP to) a schedule slot
+ * Check if a user can interact with (RSVP to) a schedule slot.
+ * Admins are control-access accounts, never real participants, so they can
+ * never RSVP to or be listed on events.
  */
 export function canUserInteractSchedule(
   user: User,
   slot: { targetGroups?: string[]; interactGroups?: string[]; isCompleted: boolean }
 ): boolean {
+  if (isUserAdmin(user)) return false;
   if (slot.isCompleted) return false;
-  if (user.role === 'admin') return true;
   const groups = slot.interactGroups && slot.interactGroups.length > 0 ? slot.interactGroups : slot.targetGroups;
   if (!groups || groups.length === 0 || groups.includes('all')) {
     return true;
@@ -385,4 +387,45 @@ export function compareScheduleSlots(a: ScheduleSlot, b: ScheduleSlot): number {
 
 export function sortScheduleSlots(slots: ScheduleSlot[]): ScheduleSlot[] {
   return [...slots].sort(compareScheduleSlots);
+}
+
+/**
+ * Sanitize an app state before it ever reaches (or is stored on) the client:
+ * - Admin invite codes are always blanked, even for admin viewers — an admin
+ *   already knows their own code and must never receive it back.
+ * - Polls created by an admin never expose that code via `createdBy`.
+ * - Admin accounts are stripped from schedule attendee lists (they are not
+ *   real participants).
+ * Also normalizes users and keeps schedules deterministically sorted.
+ */
+export function sanitizeAppState<
+  T extends { users: User[]; polls: Poll[]; schedules: ScheduleSlot[] }
+>(state: T): T {
+  const normalizedUsers = state.users.map((u) => normalizeUser(u));
+  const admins = normalizedUsers.filter((u) => isUserAdmin(u));
+  const adminCodes = new Set(admins.map((u) => (u.code || '').toUpperCase()));
+  const adminIds = new Set(admins.map((u) => u.id));
+
+  const users = normalizedUsers.map((u) => (isUserAdmin(u) ? { ...u, code: '' } : u));
+
+  const polls = state.polls.map((p) =>
+    p.createdBy && adminCodes.has(p.createdBy.toUpperCase())
+      ? { ...p, createdBy: '' }
+      : p
+  );
+
+  const schedules = (state.schedules || []).map((slot) => {
+    if (!slot.attendeeIds.some((id) => adminIds.has(id))) return slot;
+    const attendeeIds: string[] = [];
+    const attendeeNames: string[] = [];
+    slot.attendeeIds.forEach((id, idx) => {
+      if (!adminIds.has(id)) {
+        attendeeIds.push(id);
+        attendeeNames.push(slot.attendeeNames[idx] ?? '');
+      }
+    });
+    return { ...slot, attendeeIds, attendeeNames };
+  });
+
+  return { ...state, users, polls, schedules: sortScheduleSlots(schedules) };
 }

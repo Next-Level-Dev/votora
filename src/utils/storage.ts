@@ -1,5 +1,5 @@
 import { Poll, User, VoteRecord, ScheduleSlot } from '../types';
-import { sortScheduleSlots, normalizeUser, ADMIN_GROUP } from './votingEngine';
+import { sanitizeAppState, sortScheduleSlots, ADMIN_GROUP } from './votingEngine';
 
 const STORAGE_KEY = 'votora_app_data_v3';
 
@@ -80,7 +80,7 @@ export const INITIAL_POLLS: Poll[] = [
     shareFreeformOptions: true,
     isActive: true,
     createdAt: '2026-10-05T12:00:00.000Z',
-    createdBy: 'ADMIN-2026',
+    createdBy: '',
     options: [
       {
         id: 'opt_gate_2d',
@@ -110,7 +110,7 @@ export const INITIAL_POLLS: Poll[] = [
     shareFreeformOptions: true,
     isActive: true,
     createdAt: '2026-10-06T14:00:00.000Z',
-    createdBy: 'ADMIN-2026',
+    createdBy: '',
     options: [
       { id: 'opt_2d_arcane', text: 'Arcane (S2)' },
       { id: 'opt_2d_frieren', text: 'Frieren' },
@@ -135,7 +135,7 @@ export const INITIAL_POLLS: Poll[] = [
     shareFreeformOptions: false,
     isActive: true,
     createdAt: '2026-10-07T16:00:00.000Z',
-    createdBy: 'ADMIN-2026',
+    createdBy: '',
     options: [
       { id: 'opt_la_shogun', text: 'Shōgun' },
       { id: 'opt_la_severance', text: 'Severance' },
@@ -152,8 +152,8 @@ export const INITIAL_SCHEDULES: ScheduleSlot[] = [
     time: '20:30',
     watchTitle: 'cyberpunk',
     seasonEpisode: 'sezon 1 bölüm 3-5',
-    attendeeIds: ['user_admin_01', 'user_voter_01', 'user_voter_03'],
-    attendeeNames: ['Kaptan', 'Can', 'Mert'],
+    attendeeIds: ['user_voter_01', 'user_voter_03'],
+    attendeeNames: ['Can', 'Mert'],
     isCompleted: true,
     targetGroups: ['Friends'],
     interactGroups: ['Friends'],
@@ -165,8 +165,8 @@ export const INITIAL_SCHEDULES: ScheduleSlot[] = [
     time: '16:30',
     watchTitle: 'cyberpunk',
     seasonEpisode: 'sezon 1 bölüm 6-8',
-    attendeeIds: ['user_admin_01', 'user_voter_01', 'user_voter_04'],
-    attendeeNames: ['Kaptan', 'Can', 'Zeynep'],
+    attendeeIds: ['user_voter_01', 'user_voter_04'],
+    attendeeNames: ['Can', 'Zeynep'],
     isCompleted: true,
     targetGroups: ['Friends'],
     interactGroups: ['Friends'],
@@ -178,8 +178,8 @@ export const INITIAL_SCHEDULES: ScheduleSlot[] = [
     time: '20:30',
     watchTitle: 'cyberpunk',
     seasonEpisode: 'sezon 1 bölüm 9-10',
-    attendeeIds: ['user_admin_01', 'user_voter_03', 'user_voter_04'],
-    attendeeNames: ['Kaptan', 'Mert', 'Zeynep'],
+    attendeeIds: ['user_voter_03', 'user_voter_04'],
+    attendeeNames: ['Mert', 'Zeynep'],
     isCompleted: true,
     targetGroups: ['Friends'],
     interactGroups: ['Friends'],
@@ -191,8 +191,8 @@ export const INITIAL_SCHEDULES: ScheduleSlot[] = [
     time: '20:30',
     watchTitle: 'Topluluk Seçimi',
     seasonEpisode: undefined,
-    attendeeIds: ['user_admin_01', 'user_voter_01'],
-    attendeeNames: ['Kaptan', 'Can'],
+    attendeeIds: ['user_voter_01'],
+    attendeeNames: ['Can'],
     isCompleted: false,
     targetGroups: ['Friends'],
     interactGroups: ['Friends'],
@@ -378,23 +378,23 @@ export function loadAppState(): AppState {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed.users && parsed.polls && parsed.votes && parsed.groups) {
-        return {
+        return sanitizeAppState({
           ...parsed,
-          users: (parsed.users as User[]).map((u) => normalizeUser(u)),
-          schedules: sortScheduleSlots(parsed.schedules || INITIAL_SCHEDULES),
-        };
+          users: parsed.users as User[],
+          schedules: parsed.schedules || INITIAL_SCHEDULES,
+        });
       }
     }
   } catch {
     // Fallback
   }
-  const defaultState: AppState = {
-    users: INITIAL_USERS.map((u) => normalizeUser(u)),
+  const defaultState: AppState = sanitizeAppState({
+    users: INITIAL_USERS,
     polls: INITIAL_POLLS,
     votes: INITIAL_VOTES,
     groups: INITIAL_GROUPS,
-    schedules: sortScheduleSlots(INITIAL_SCHEDULES),
-  };
+    schedules: INITIAL_SCHEDULES,
+  });
   saveAppState(defaultState);
   return defaultState;
 }

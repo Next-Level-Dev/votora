@@ -17,12 +17,31 @@ import {
   insertScheduleSlot,
   deleteScheduleSlot,
 } from './server/db';
-import { ScheduleSlot } from './src/types';
+import { ScheduleSlot, User } from './src/types';
 import { ADMIN_GROUP } from './src/utils/votingEngine';
 
 function isAdminUser(user: { role?: string; groups?: string[] } | undefined | null): boolean {
   if (!user) return false;
   return user.role === 'admin' || Boolean(user.groups && user.groups.includes(ADMIN_GROUP));
+}
+
+// Admins are not real participants: drop any admin ids (and their paired
+// names) from an attendee list coming from a request body.
+function stripAdminAttendees(
+  attendeeIds: string[],
+  attendeeNames: string[],
+  users: User[]
+): { attendeeIds: string[]; attendeeNames: string[] } {
+  const adminIds = new Set(users.filter((u) => isAdminUser(u)).map((u) => u.id));
+  const ids: string[] = [];
+  const names: string[] = [];
+  (attendeeIds || []).forEach((id, idx) => {
+    if (!adminIds.has(id)) {
+      ids.push(id);
+      names.push((attendeeNames || [])[idx] ?? '');
+    }
+  });
+  return { attendeeIds: ids, attendeeNames: names };
 }
 
 const app = express();
@@ -46,14 +65,27 @@ async function viewerIsAdmin(req: express.Request): Promise<boolean> {
   }
 }
 
-// Strip confidential invite codes from data being sent to non-admin viewers.
+// Strip confidential invite codes from data being sent to clients. Admin
+// codes are NEVER returned — not even to admin viewers (an admin already
+// knows their own code). Non-admin viewers get every invite code blanked.
 function sanitizeForViewer(data: Awaited<ReturnType<typeof getAllData>>, isAdmin: boolean) {
-  if (isAdmin) return data;
+  const adminCodes = new Set(
+    data.users.filter((u) => isAdminUser(u)).map((u) => u.code.toUpperCase())
+  );
+  const users = data.users.map((u) => (isAdminUser(u) ? { ...u, code: '' } : u));
+  const polls = data.polls.map((p) =>
+    p.createdBy && adminCodes.has(p.createdBy.toUpperCase())
+      ? { ...p, createdBy: '' }
+      : p
+  );
+  if (isAdmin) {
+    return { ...data, users, polls };
+  }
   return {
     ...data,
-    users: data.users.map((u) => ({ ...u, code: '' })),
+    users: users.map((u) => ({ ...u, code: '' })),
     votes: data.votes.map((v) => ({ ...v, userCode: '' })),
-    polls: data.polls.map((p) => ({ ...p, createdBy: '' })),
+    polls: polls.map((p) => ({ ...p, createdBy: '' })),
   };
 }
 
@@ -97,7 +129,9 @@ app.post('/api/login', async (req, res) => {
     });
 
     const updated = { ...user, lastLoginAt: new Date().toISOString() };
-    res.json({ user: updated, state: sanitizeForViewer(data, isAdminUser(user)) });
+    // Never send an admin's own code back to the client.
+    const safeUser = isAdminUser(user) ? { ...updated, code: '' } : updated;
+    res.json({ user: safeUser, state: sanitizeForViewer(data, isAdminUser(user)) });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -224,7 +258,9 @@ app.delete('/api/groups/:name', async (req, res) => {
 app.post('/api/schedules', async (req, res) => {
   try {
     const slot: ScheduleSlot = req.body;
-    await insertScheduleSlot(slot);
+    const preData = await getAllData();
+    const cleaned = stripAdminAttendees(slot.attendeeIds, slot.attendeeNames, preData.users);
+    await insertScheduleSlot({ ...slot, ...cleaned });
     const data = await getAllData();
     res.json({ success: true, schedules: data.schedules });
   } catch (err: any) {
@@ -252,6 +288,12 @@ app.post('/api/schedules/:id/attend', async (req, res) => {
 
     if (!slot) return res.status(404).json({ error: 'Slot not found' });
     if (slot.isCompleted) return res.status(400).json({ error: 'Slot is completed and locked' });
+
+    // Admins are control-access accounts, never event participants.
+    const attendeeUser = data.users.find((u) => u.id === userId);
+    if (isAdminUser(attendeeUser)) {
+      return res.status(403).json({ error: 'Administrators cannot attend events' });
+    }
 
     let attendeeIds = [...slot.attendeeIds];
     let attendeeNames = [...slot.attendeeNames];
@@ -312,10 +354,11 @@ app.put('/api/schedules/:id/attendees', async (req, res) => {
 
     if (!slot) return res.status(404).json({ error: 'Slot not found' });
 
+    const cleaned = stripAdminAttendees(attendeeIds, attendeeNames, data.users);
     const updatedSlot: ScheduleSlot = {
       ...slot,
-      attendeeIds,
-      attendeeNames,
+      attendeeIds: cleaned.attendeeIds,
+      attendeeNames: cleaned.attendeeNames,
     };
 
     await insertScheduleSlot(updatedSlot);
